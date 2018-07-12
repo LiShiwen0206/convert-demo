@@ -316,7 +316,7 @@ public class GraphicConverter {
             list.add(point);
             preVertex = vertex;
         }
-        if((flag!=null || flag == POLYLINE_FLAG_CLOSED) && list.size()>1){
+        if(flag!=null && flag == POLYLINE_FLAG_CLOSED && list.size()>1){
             list.add(list.get(0));
         }
         map = pointsToStr(list);

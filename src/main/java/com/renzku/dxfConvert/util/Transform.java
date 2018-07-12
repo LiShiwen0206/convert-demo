@@ -25,7 +25,12 @@ public class Transform {
         return rst;
     }
 
-
+    /**
+     * 某坐标系转换，不公开
+     * @param lon
+     * @param lat
+     * @return
+     */
     public static double[] LLToXY(double lon, double lat){
         double[] rst = new double[2];
         rst[0] = 4243.168007740445;
@@ -33,6 +38,12 @@ public class Transform {
         return rst;
     }
 
+    /**
+     * 某坐标系转换，不公开
+     * @param x
+     * @param y
+     * @return
+     */
     public static double[] XYToLL(double x, double y){
         double[] rst = new double[2];
         rst[0] = 112.963030;

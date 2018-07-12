@@ -533,7 +533,7 @@ public class Parser {
                     break;
                 case "0":
                     ellipse.setCenterPoint(centerPoint);
-                    ellipse.setEndPoint(centerPoint);
+                    ellipse.setEndPoint(endPoint);
                     ellipse.setColor(color);
                     list.add(ellipse);
                     return code;

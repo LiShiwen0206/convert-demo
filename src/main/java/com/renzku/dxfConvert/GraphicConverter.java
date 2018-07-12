@@ -19,8 +19,11 @@ public class GraphicConverter {
     private static final String MAP_KEY_GCJ02 = "gcj02";
     private static final String MAP_KEY_POINTS = "list";
 
+    // 多段线闭合flag值
+    private static final int POLYLINE_FLAG_CLOSED = 1;
+
     // 圆上点间隔
-    private static final Double CIRCLR_PER_POINT = 20d;
+    private static final Double CIRCLR_ELLIPSE_ARC_PER_POINT = 20d;
     // 凸度 圆弧取点条件 2端点间隔 大于等于此值
     private static final Double POLYLINE_TUDU_DIS = 100d;
 
@@ -209,7 +212,7 @@ public class GraphicConverter {
             graphic.setLayerName(polyLine.getLayerName());
             graphic.setColor(polyLine.getColorRGBStr());
             graphic.setFillColor(getFillColor(polyLine.getHandleId()).getColorRGBStr());
-            Map<String,Object> map = convertVertex(polyLine.getVertexCoordinates());
+            Map<String,Object> map = convertVertex(polyLine.getPolylineFlag(), polyLine.getVertexCoordinates());
             graphic.setPointCount((BigInteger)map.get(MAP_KEY_COUNT));
             graphic.setGpsList((String)map.get(MAP_KEY_GPS));
             graphic.setGcj02List((String)map.get(MAP_KEY_GCJ02));
@@ -233,7 +236,7 @@ public class GraphicConverter {
             graphic.setLayerName(lwPolyLine.getLayerName());
             graphic.setColor(lwPolyLine.getColorRGBStr());
             graphic.setFillColor(getFillColor(lwPolyLine.getHandleId()).getColorRGBStr());
-            Map<String,Object> map = convertVertex(lwPolyLine.getVertexCoordinates());
+            Map<String,Object> map = convertVertex(lwPolyLine.getPolylineFlag(), lwPolyLine.getVertexCoordinates());
             graphic.setPointCount((BigInteger)map.get(MAP_KEY_COUNT));
             graphic.setGpsList((String) map.get(MAP_KEY_GPS));
             graphic.setGcj02List((String)map.get(MAP_KEY_GCJ02));
@@ -292,7 +295,13 @@ public class GraphicConverter {
         }
     }
 
-    private Map<String,Object> convertVertex(List<Vertex> vertices){
+    /**
+     * 多段线二维多段线点转换
+     * @param flag 是否闭合
+     * @param vertices
+     * @return
+     */
+    private Map<String,Object> convertVertex(Integer flag, List<Vertex> vertices){
         Map<String,Object> map = new HashMap<>();
         Iterator<Vertex> itr = vertices.iterator();
         List<Point> list = new ArrayList<>();
@@ -306,6 +315,9 @@ public class GraphicConverter {
             Point point = vertex.getLocationPoint();
             list.add(point);
             preVertex = vertex;
+        }
+        if((flag!=null || flag == POLYLINE_FLAG_CLOSED) && list.size()>1){
+            list.add(list.get(0));
         }
         map = pointsToStr(list);
         return map;
@@ -343,7 +355,7 @@ public class GraphicConverter {
         int pointCount;
         Point center = ellipse.getCenterPoint();
         Point endPoint = ellipse.getEndPoint();
-        Double[] angle = correctAngle(ellipse.getStartAngle(), ellipse.getEndAngle());
+        Double[] angle = correctAngle(ellipse.getEndPoint(), ellipse.getStartAngle(), ellipse.getEndAngle());
         Double start = angle[0];
         Double end = angle[1];
         pointCount = (int) (end - start) + 1;
@@ -352,7 +364,7 @@ public class GraphicConverter {
         double ang = start;
         for(int i = 0;i< pointCount && ang<end;i++){
             // 一度 1点
-            ang += i;
+            ang += 1;
             Point point = getPointOnEllipse(a, b, ang);
             if(point != null)
                 point = rotatePointOnEllipse(point, center, endPoint);
@@ -389,7 +401,7 @@ public class GraphicConverter {
                 pointCount = pointCount == 0 ? 1: pointCount + 1;
             }else {
                 // 据说dwg中单位是 m 米
-                pointCount = (int)(2 * Math.PI * radius / CIRCLR_PER_POINT);
+                pointCount = (int)(2 * Math.PI * radius / CIRCLR_ELLIPSE_ARC_PER_POINT);
             }
             List<Point> list = getPointsOnCircleOrArc(pointCount, center, radius, start, end);
             if(type == Graphic.GRAPHIC_TYPE_LWPOLYLINE || type == Graphic.GRAPHIC_TYPE_POLYLINE){
@@ -462,6 +474,7 @@ public class GraphicConverter {
                 arc.getRadius(), arc.getStartAngle(), arc.getEndAngle());
         list = (List<Point>)map.get(MAP_KEY_POINTS);
 
+
         list = sortPointListNearBy(prePoint, currentPoint, list);
 
         return list;
@@ -476,6 +489,10 @@ public class GraphicConverter {
      */
     private List<Point> sortPointListNearBy(Point from, Point target, List<Point> data){
         List<Point> list ;
+        if(data == null || data.size() == 0){
+            list = new ArrayList<>();
+            return list;
+        }
         Point start = data.get(0);
         Double toFrom = Math.sqrt(Math.pow(from.getX() - start.getX(), 2) + Math.pow(from.getY() - start.getY(), 2));
         Double toTarget = Math.sqrt(Math.pow(target.getX() - start.getX(), 2) + Math.pow(target.getY() - start.getY(), 2));
@@ -606,11 +623,16 @@ public class GraphicConverter {
      * @param end
      * @return
      */
-    private Double[] correctAngle(Double start, Double end){
+    private Double[] correctAngle(Point point, Double start, Double end){
         Double[] rst = new Double[]{0d,0d};
         // 0-2 to 0-360
-        start = start * Math.PI * 180;
-        end = end * Math.PI * 180;
+        start = start / Math.PI * 180;
+        end = end / Math.PI * 180;
+        if(point.getX() < 0){
+            start = start - 180;
+            end = end - 180;
+        }
+        //修正到±2π
         start = start % 360;
         end = end % 360;
         if(start > end ){

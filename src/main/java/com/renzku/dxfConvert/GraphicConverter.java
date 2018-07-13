@@ -403,15 +403,17 @@ public class GraphicConverter {
                 // 据说dwg中单位是 m 米
                 pointCount = (int)(2 * Math.PI * radius / CIRCLR_ELLIPSE_ARC_PER_POINT);
             }
+            // 不包括起点、结束点
             List<Point> list = getPointsOnCircleOrArc(pointCount, center, radius, start, end);
             if(type == Graphic.GRAPHIC_TYPE_LWPOLYLINE || type == Graphic.GRAPHIC_TYPE_POLYLINE){
                 map = new HashMap<>();
                 map.put(MAP_KEY_POINTS, list);
             }else {
-                // 添加起点 -- 前后都插入，形成封闭
-                Point point = getPointOnCircle(center, radius, 0d);
-                list.add(0, point);
-                list.add(point);
+                // 添加起点\结束点
+                Point startPoint = getPointOnCircle(center, radius, start);
+                Point endPoint = getPointOnCircle(center, radius, end);
+                list.add(0, startPoint);
+                list.add(endPoint);
                 map = pointsToStr(list);
             }
         }catch (Exception e){
